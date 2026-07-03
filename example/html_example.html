@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>barcode-rest example</title>
+  <style>
+    body {
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 20px;
+      font: 16px/1.5 system-ui, sans-serif;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+    }
+
+    input, select, button {
+      padding: 8px;
+      font: inherit;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      margin-top: 24px;
+      image-rendering: pixelated;
+    }
+
+    #status {
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>barcode-rest example</h1>
+
+  <form id="barcode-form">
+    <input id="text" value="ABC123" aria-label="Barcode text" required>
+    <select id="type" aria-label="Barcode type">
+      <option value="datamatrix">DataMatrix</option>
+      <option value="qr" selected>QR</option>
+      <option value="code128">Code128</option>
+    </select>
+    <button type="submit">Generate</button>
+  </form>
+
+  <p id="status">Start barcode-rest, then generate an image.</p>
+  <img id="barcode" alt="Generated barcode">
+
+  <script>
+    const apiBase = "http://127.0.0.1:8787";
+    const form = document.querySelector("#barcode-form");
+    const image = document.querySelector("#barcode");
+    const status = document.querySelector("#status");
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const text = document.querySelector("#text").value;
+      const type = document.querySelector("#type").value;
+      const params = new URLSearchParams({ text });
+
+      if (type === "code128") {
+        params.set("module", "3");
+        params.set("height", "80");
+        params.set("label", "1");
+      } else {
+        params.set("size", "512");
+        if (type === "qr") params.set("level", "M");
+      }
+
+      status.textContent = "Loading...";
+      image.src = `${apiBase}/${type}?${params}`;
+    });
+
+    image.addEventListener("load", () => {
+      status.textContent = "Generated successfully.";
+    });
+
+    image.addEventListener("error", () => {
+      status.textContent = "Could not load the barcode. Is barcode-rest running?";
+    });
+  </script>
+</body>
+</html>

@@ -148,8 +148,11 @@ http://127.0.0.1:8787/ean13?text=490123456789
 4. Place it over the target cell with `Shapes.AddPicture`
    (`LinkToFile:=msoFalse`, `SaveWithDocument:=msoTrue`)
 
-A ready-to-import VBA standard module is available at
-[`example/vba_example.bas`](example/vba_example.bas).
+Ready-to-run examples:
+
+- [Excel VBA standard module](example/vba_example.bas)
+- [Python client](example/python_example.py) (standard library only; run with `uv run example/python_example.py`)
+- [HTML client](example/html_example.html) (open directly in a browser)
 
 ## Build
 
