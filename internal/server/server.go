@@ -7,7 +7,9 @@ import (
 	"barcode-rest/internal/barcode"
 )
 
-const Version = "0.1.0"
+// Version is overridden at release build time:
+// -ldflags "-X barcode-rest/internal/server.Version=vX.Y.Z"
+var Version = "dev"
 
 func New() http.Handler {
 	mux := http.NewServeMux()

@@ -48,8 +48,10 @@ barcode-rest.exe -version
 起動確認用。HTTP 200で以下を返す。
 
 ```json
-{"ok": true, "name": "barcode-rest", "version": "0.1.0"}
+{"ok": true, "name": "barcode-rest", "version": "v0.1.0"}
 ```
+
+`version` はビルド時に埋め込まれるリリースタグ（ローカルビルドでは `dev`）。
 
 ### GET /datamatrix
 

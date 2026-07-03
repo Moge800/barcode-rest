@@ -50,8 +50,10 @@ Stop with `taskkill /im barcode-rest.exe`.
 Liveness check. Returns HTTP 200 with:
 
 ```json
-{"ok": true, "name": "barcode-rest", "version": "0.1.0"}
+{"ok": true, "name": "barcode-rest", "version": "v0.1.0"}
 ```
+
+`version` is the release tag embedded at build time (`dev` for local builds).
 
 ### GET /datamatrix
 

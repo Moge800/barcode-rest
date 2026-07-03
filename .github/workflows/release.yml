@@ -1,24 +1,21 @@
 name: Release
 
-# GitHubでリリースを作成したときに barcode-rest.exe を自動ビルドして添付する。
-# Automatically build and attach barcode-rest.exe when a GitHub Release is created.
+# v* タグをpushするとビルドしてGitHub Releaseを自動作成する。
+# Pushing a v* tag builds the binaries and creates a GitHub Release.
 on:
-  release:
-    types: [created]
-
-permissions:
-  contents: write  # softprops/action-gh-release がリリースにファイルを添付するために必要
-                   # Required for softprops/action-gh-release to upload release assets.
+  push:
+    tags:
+      - "v*"
 
 jobs:
-  build:
-    name: Build barcode-rest (Windows + Linux)
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -27,15 +24,23 @@ jobs:
 
       # CGOなしなのでクロスコンパイルで全ターゲットを作れる。
       # AV誤検知を避けるため -H=windowsgui は使わない(コンソール窓は起動時に自前で隠す)。
-      - name: Build Windows
-        run: GOOS=windows GOARCH=amd64 go build -o barcode-rest.exe .
+      - name: Build (Windows amd64)
+        run: GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-X barcode-rest/internal/server.Version=${GITHUB_REF_NAME}" -o barcode-rest.exe .
 
-      - name: Build Linux
-        run: GOOS=linux GOARCH=amd64 go build -o barcode-rest-linux-amd64 .
+      - name: Build (Linux amd64)
+        run: GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-X barcode-rest/internal/server.Version=${GITHUB_REF_NAME}" -o barcode-rest-linux-amd64 .
 
-      - name: Upload to release
+      - name: Build (Linux arm64)
+        run: GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "-X barcode-rest/internal/server.Version=${GITHUB_REF_NAME}" -o barcode-rest-linux-arm64 .
+
+      - name: Generate checksums
+        run: sha256sum barcode-rest.exe barcode-rest-linux-amd64 barcode-rest-linux-arm64 > checksums.txt
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             barcode-rest.exe
             barcode-rest-linux-amd64
+            barcode-rest-linux-arm64
+            checksums.txt
