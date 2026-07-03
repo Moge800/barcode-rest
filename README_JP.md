@@ -144,6 +144,9 @@ http://127.0.0.1:8787/ean13?text=490123456789
 3. 返却PNGをブック直下の `barcode_images` などに保存
 4. `Shapes.AddPicture`（`LinkToFile:=msoFalse`, `SaveWithDocument:=msoTrue`）でセル上に貼り付け
 
+そのままインポートできるVBA標準モジュールのサンプルは
+[`example/vba_example.bas`](example/vba_example.bas) にあります。
+
 ## ビルド
 
 ```powershell

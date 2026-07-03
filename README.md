@@ -148,6 +148,9 @@ http://127.0.0.1:8787/ean13?text=490123456789
 4. Place it over the target cell with `Shapes.AddPicture`
    (`LinkToFile:=msoFalse`, `SaveWithDocument:=msoTrue`)
 
+A ready-to-import VBA standard module is available at
+[`example/vba_example.bas`](example/vba_example.bas).
+
 ## Build
 
 ```powershell
