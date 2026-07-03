@@ -97,4 +97,7 @@ Testing/
 
 # Claude Code / agent files (not shared)
 .claude/
-AGENTS.mdbarcode-rest.exe~
+AGENTS.md
+
+# Go build backup files
+*.exe~
