@@ -1,0 +1,35 @@
+name: Release
+
+# GitHubでリリースを作成したときに barcode-rest.exe を自動ビルドして添付する。
+# Automatically build and attach barcode-rest.exe when a GitHub Release is created.
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write  # softprops/action-gh-release がリリースにファイルを添付するために必要
+                   # Required for softprops/action-gh-release to upload release assets.
+
+jobs:
+  build:
+    name: Build barcode-rest (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        # AV誤検知を避けるため -H=windowsgui は使わない(コンソール窓は起動時に自前で隠す)
+        run: go build -o barcode-rest.exe .
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: barcode-rest.exe
