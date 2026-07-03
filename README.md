@@ -144,9 +144,10 @@ http://127.0.0.1:8787/ean13?text=490123456789
 
 1. Read the string to encode from a cell
 2. GET `http://127.0.0.1:8787/datamatrix?text=...`
-3. Save the returned PNG under the workbook folder (e.g. `barcode_images`)
-4. Place it over the target cell with `Shapes.AddPicture`
+3. Save the returned PNG to a temporary file under `%TEMP%`
+4. Embed it over the target cell with `Shapes.AddPicture`
    (`LinkToFile:=msoFalse`, `SaveWithDocument:=msoTrue`)
+5. Delete the temporary PNG after embedding it
 
 Ready-to-run examples:
 

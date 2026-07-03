@@ -141,8 +141,9 @@ http://127.0.0.1:8787/ean13?text=490123456789
 
 1. セルからバーコード化したい文字列を取得
 2. `http://127.0.0.1:8787/datamatrix?text=...` をGET
-3. 返却PNGをブック直下の `barcode_images` などに保存
-4. `Shapes.AddPicture`（`LinkToFile:=msoFalse`, `SaveWithDocument:=msoTrue`）でセル上に貼り付け
+3. 返却PNGを `%TEMP%` 配下の一時ファイルとして保存
+4. `Shapes.AddPicture`（`LinkToFile:=msoFalse`, `SaveWithDocument:=msoTrue`）でセル上に埋め込み
+5. 埋め込み後に一時PNGを削除
 
 すぐに試せるサンプル:
 
