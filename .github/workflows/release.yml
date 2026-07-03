@@ -12,8 +12,8 @@ permissions:
 
 jobs:
   build:
-    name: Build barcode-rest (Windows)
-    runs-on: windows-latest
+    name: Build barcode-rest (Windows + Linux)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -25,11 +25,17 @@ jobs:
       - name: Test
         run: go test ./...
 
-      - name: Build
-        # AV誤検知を避けるため -H=windowsgui は使わない(コンソール窓は起動時に自前で隠す)
-        run: go build -o barcode-rest.exe .
+      # CGOなしなのでクロスコンパイルで全ターゲットを作れる。
+      # AV誤検知を避けるため -H=windowsgui は使わない(コンソール窓は起動時に自前で隠す)。
+      - name: Build Windows
+        run: GOOS=windows GOARCH=amd64 go build -o barcode-rest.exe .
+
+      - name: Build Linux
+        run: GOOS=linux GOARCH=amd64 go build -o barcode-rest-linux-amd64 .
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: barcode-rest.exe
+          files: |
+            barcode-rest.exe
+            barcode-rest-linux-amd64
