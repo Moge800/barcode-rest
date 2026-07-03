@@ -26,7 +26,7 @@ barcode-rest.exe
 ポート変更:
 
 ```powershell
-barcode-rest.exe -port 8787
+barcode-rest.exe -port 9999
 ```
 
 バージョン表示:
@@ -62,7 +62,7 @@ DataMatrix画像をPNGで返す。
 | `text` | 必須 | なし | 埋め込む文字列（UTF-8で最大128バイト） |
 | `module` | 任意 | `10` | 1モジュールあたりのピクセル数（2〜32） |
 | `quiet` | 任意 | `4` | 周囲余白のモジュール数（0〜16） |
-| `size` | 任意 | なし | 出力画像の一辺のピクセル数（16〜2048）。指定時は `module` を無視し、収まる最大の整数モジュールで描画して白余白で中央寄せする |
+| `size` | 任意 | なし | 出力画像の一辺のピクセル数（16〜2048）。指定時は `module` を無視し、収まる最大の整数モジュールで描画して白余白で中央寄せする。実際に使用できる最小サイズはデータ量・シンボル形式・quietの値によって異なり、バーコードが収まらない場合はHTTP 400を返す |
 
 ### GET /qr
 
@@ -101,9 +101,9 @@ PDF417（スタック型2D）をPNGで返す。
 GET /code128   ASCII文字列（最大80文字）
 GET /code39    大文字英数字と記号 -. $/+% （最大128バイト）
 GET /code93    大文字英数字と記号 -. $/+% （最大128バイト、チェックサム付き）
-GET /codabar   スタート/ストップ文字A〜D + 数字・-$:/.+（例: A12345B）
-GET /itf       偶数桁の数字（Interleaved 2 of 5）
-GET /code25    数字（Standard 2 of 5）
+GET /codabar   スタート/ストップ文字A〜D + 数字・-$:/.+（例: A12345B、最大128バイト）
+GET /itf       偶数桁の数字（Interleaved 2 of 5、最大128バイト）
+GET /code25    数字（Standard 2 of 5、最大128バイト）
 GET /ean13     12桁（チェックデジット自動計算）または13桁の数字（JANコード）
 GET /ean8      7桁（チェックデジット自動計算）または8桁の数字
 ```
@@ -122,7 +122,7 @@ GET /ean8      7桁（チェックデジット自動計算）または8桁の数
 ### エラー
 
 - パラメータ不正: HTTP 400 `{"ok": false, "error": "..."}`
-- 出力画像が約16メガピクセル超（極端なmodule/height/quietの組み合わせ）: HTTP 400
+- 出力画像が約16メガピクセル超（極端なmodule/height/quietの組み合わせや大きなラベル）: HTTP 400
 - 各シンボロジーで使えない文字・桁数・チェックデジット不正: HTTP 400
 - GET以外のメソッド: HTTP 405
 - 未定義パス: HTTP 404
@@ -147,11 +147,15 @@ http://127.0.0.1:8787/ean13?text=490123456789
 
 すぐに試せるサンプル:
 
-- [Excel VBA標準モジュール](example/vba_example.bas)
+- [Excel VBA標準モジュール](example/vba_example.bas)（MSXML2.XMLHTTPとADODB.Streamを使用するためWindows版Excel向け）
 - [Pythonクライアント](example/python_example.py)（標準ライブラリのみ。`uv run example/python_example.py` で実行）
 - [HTMLクライアント](example/html_example.html)（ブラウザで直接開く）
 
+barcode-restを別ポートで起動する場合は、各サンプルの `API_BASE` も変更する。
+
 ## ビルド
+
+Go 1.26以降が必要。
 
 ```powershell
 go build -o barcode-rest.exe

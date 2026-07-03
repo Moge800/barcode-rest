@@ -29,7 +29,7 @@ import (
 var ErrTooSmall = errors.New("size is too small for the encoded barcode")
 
 // ErrTooLarge means the output image would exceed maxPixels.
-var ErrTooLarge = errors.New("image too large: reduce module, height or quiet")
+var ErrTooLarge = errors.New("image too large: reduce module, height or quiet, shorten text, or disable label")
 
 // maxPixels caps output allocation (~16MB grayscale). Max-parameter code39
 // requests could otherwise allocate ~200MB each.

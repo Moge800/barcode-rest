@@ -27,7 +27,7 @@ barcode-rest.exe
 Change port:
 
 ```powershell
-barcode-rest.exe -port 8787
+barcode-rest.exe -port 9999
 ```
 
 Print version:
@@ -64,7 +64,7 @@ Returns a DataMatrix PNG.
 | `text` | yes | — | String to encode (max 128 bytes UTF-8) |
 | `module` | no | `10` | Pixels per module (2–32) |
 | `quiet` | no | `4` | Quiet-zone modules around the code (0–16) |
-| `size` | no | — | Output edge length in px (16–2048). Overrides `module`: draws at the largest integer module that fits, centered with white padding |
+| `size` | no | — | Output edge length in px (16–2048). Overrides `module`: draws at the largest integer module that fits, centered with white padding. The minimum usable size depends on the encoded data, symbol type, and quiet zone — HTTP 400 is returned if the symbol cannot fit |
 
 ### GET /qr
 
@@ -104,9 +104,9 @@ These endpoints share common parameters.
 GET /code128   any ASCII string (max 80 chars)
 GET /code39    uppercase letters, digits and -. $/+% (max 128 bytes)
 GET /code93    uppercase letters, digits and -. $/+% (max 128 bytes, with checksum)
-GET /codabar   start/stop chars A-D with digits or -$:/.+ between (e.g. A12345B)
-GET /itf       even number of digits (Interleaved 2 of 5)
-GET /code25    digits (Standard 2 of 5)
+GET /codabar   start/stop chars A-D with digits or -$:/.+ between (e.g. A12345B, max 128 bytes)
+GET /itf       even number of digits (Interleaved 2 of 5, max 128 bytes)
+GET /code25    digits (Standard 2 of 5, max 128 bytes)
 GET /ean13     12 digits (check digit computed) or 13 digits (JAN code)
 GET /ean8      7 digits (check digit computed) or 8 digits
 ```
@@ -125,7 +125,7 @@ GET /ean8      7 digits (check digit computed) or 8 digits
 ### Errors
 
 - Invalid parameters: HTTP 400 `{"ok": false, "error": "..."}`
-- Output image over ~16 megapixels (extreme module/height/quiet combos): HTTP 400
+- Output image over ~16 megapixels (extreme module/height/quiet combinations or a large label): HTTP 400
 - Characters/length/check-digit not valid for the symbology: HTTP 400
 - Non-GET methods: HTTP 405
 - Unknown paths: HTTP 404
@@ -151,11 +151,15 @@ http://127.0.0.1:8787/ean13?text=490123456789
 
 Ready-to-run examples:
 
-- [Excel VBA standard module](example/vba_example.bas)
+- [Excel VBA standard module](example/vba_example.bas) (Windows Excel only — uses MSXML2.XMLHTTP and ADODB.Stream)
 - [Python client](example/python_example.py) (standard library only; run with `uv run example/python_example.py`)
 - [HTML client](example/html_example.html) (open directly in a browser)
 
+If barcode-rest is started with a different port, update `API_BASE` in the example.
+
 ## Build
+
+Requires Go 1.26 or later.
 
 ```powershell
 go build -o barcode-rest.exe
