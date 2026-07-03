@@ -28,6 +28,13 @@ import (
 // ErrTooSmall means the requested Size cannot fit the barcode at 1px/module.
 var ErrTooSmall = errors.New("size is too small for the encoded barcode")
 
+// ErrTooLarge means the output image would exceed maxPixels.
+var ErrTooLarge = errors.New("image too large: reduce module, height or quiet")
+
+// maxPixels caps output allocation (~16MB grayscale). Max-parameter code39
+// requests could otherwise allocate ~200MB each.
+const maxPixels = 16 << 20
+
 type GenerateOptions struct {
 	Text   string
 	Module int
@@ -84,7 +91,11 @@ func GeneratePDF417PNG(opt GenerateOptions) ([]byte, error) {
 		return nil, err
 	}
 	m := opt.Module
-	return encodePNG(blockImage(code, m, m, opt.Quiet*m))
+	img, err := blockImage(code, m, m, opt.Quiet*m)
+	if err != nil {
+		return nil, err
+	}
+	return encodePNG(img)
 }
 
 // ---- 1D (bar width Module px, bar height Height px) ----
@@ -145,11 +156,19 @@ func generate1D[T bc.Barcode](opt GenerateOptions, encode func(string) (T, error
 		return nil, err
 	}
 	// 1D codes are 1 module tall, so scaling y by Height gives the bar height.
-	img := blockImage(code, opt.Module, opt.Height, opt.Quiet*opt.Module)
+	img, err := blockImage(code, opt.Module, opt.Height, opt.Quiet*opt.Module)
+	if err != nil {
+		return nil, err
+	}
 	if opt.Label {
-		// Content(), not opt.Text: includes computed check digits (EAN) and
-		// is what a scanner will actually read.
-		img = addLabel(img, code.Content(), opt.Module)
+		// Content(), not opt.Text: includes computed check digits (EAN).
+		// Except in Extended Code39/93 mode, where Content() is the encoded
+		// pair form (+N for n) — show the original text there instead.
+		label := code.Content()
+		if opt.FullASCII {
+			label = opt.Text
+		}
+		img = addLabel(img, label, opt.Module)
 	}
 	return encodePNG(img)
 }
@@ -196,13 +215,17 @@ func qrLevel(s string) (qr.ErrorCorrectionLevel, error) {
 
 // blockImage draws the barcode with mx x my pixel modules surrounded by a
 // white margin (px).
-func blockImage(code bc.Barcode, mx, my, margin int) *image.Gray {
+func blockImage(code bc.Barcode, mx, my, margin int) (*image.Gray, error) {
 	src := toGray(code)
 	b := src.Rect
-	img := image.NewGray(image.Rect(0, 0, b.Dx()*mx+2*margin, b.Dy()*my+2*margin))
+	w, h := b.Dx()*mx+2*margin, b.Dy()*my+2*margin
+	if w*h > maxPixels {
+		return nil, ErrTooLarge
+	}
+	img := image.NewGray(image.Rect(0, 0, w, h))
 	whiteFill(img)
 	scaleInto(img, image.Rect(margin, margin, margin+b.Dx()*mx, margin+b.Dy()*my), src)
-	return img
+	return img, nil
 }
 
 // toGray copies the barcode into an image.Gray at 1px/module. The x/image
@@ -245,7 +268,11 @@ func encodePNG(img *image.Gray) ([]byte, error) {
 func renderPNG(code bc.Barcode, opt GenerateOptions) ([]byte, error) {
 	if opt.Size <= 0 {
 		m := opt.Module
-		return encodePNG(blockImage(code, m, m, opt.Quiet*m))
+		img, err := blockImage(code, m, m, opt.Quiet*m)
+		if err != nil {
+			return nil, err
+		}
+		return encodePNG(img)
 	}
 	src := toGray(code)
 	b := src.Rect

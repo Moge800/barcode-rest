@@ -108,6 +108,9 @@ func TestBadRequests(t *testing.T) {
 		{"/code39?text=nullpo", 400}, // lowercase rejected unless fullascii=1
 		{"/code39?text=A&fullascii=2", 400},
 		{"/code128?text=A&label=2", 400},
+		{"/code128?text=" + strings.Repeat("A", 81), 400}, // library limit is 80
+		// max-parameter code39 would render ~55000px wide -> pixel cap
+		{"/code39?text=" + strings.Repeat("a", 128) + "&fullascii=1&module=32&height=600", 400},
 		{"/pdf417?text=A&level=9", 400},
 		{"/pdf417?text=A&size=255", 400},
 		{"/nosuchpath", 404},
@@ -116,6 +119,12 @@ func TestBadRequests(t *testing.T) {
 		if rec := do(t, "GET", c.path); rec.Code != c.want {
 			t.Errorf("GET %s = %d, want %d", c.path, rec.Code, c.want)
 		}
+	}
+}
+
+func TestCode128MaxLength(t *testing.T) {
+	if rec := do(t, "GET", "/code128?text="+strings.Repeat("A", 80)); rec.Code != 200 {
+		t.Errorf("80 chars = %d, want 200", rec.Code)
 	}
 }
 

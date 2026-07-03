@@ -163,9 +163,15 @@ func parseIntParam(w http.ResponseWriter, s, name string, def, min, max int) (in
 	return v, true
 }
 
+// genSem bounds concurrent generations: with the pixel cap each render can
+// still allocate ~16MB, so unbounded parallelism could exhaust memory.
+var genSem = make(chan struct{}, 4)
+
 func writePNG(w http.ResponseWriter, opt barcode.GenerateOptions, gen func(barcode.GenerateOptions) ([]byte, error), errMsg string, errStatus int) {
+	genSem <- struct{}{}
 	png, err := gen(opt)
-	if errors.Is(err, barcode.ErrTooSmall) {
+	<-genSem
+	if errors.Is(err, barcode.ErrTooSmall) || errors.Is(err, barcode.ErrTooLarge) {
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

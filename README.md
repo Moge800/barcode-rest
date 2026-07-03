@@ -101,7 +101,7 @@ Returns a PDF417 (stacked 2D) PNG.
 These endpoints share common parameters.
 
 ```text
-GET /code128   any ASCII string (max 128 bytes)
+GET /code128   any ASCII string (max 80 chars)
 GET /code39    uppercase letters, digits and -. $/+% (max 128 bytes)
 GET /code93    uppercase letters, digits and -. $/+% (max 128 bytes, with checksum)
 GET /codabar   start/stop chars A-D with digits or -$:/.+ between (e.g. A12345B)
@@ -125,6 +125,7 @@ GET /ean8      7 digits (check digit computed) or 8 digits
 ### Errors
 
 - Invalid parameters: HTTP 400 `{"ok": false, "error": "..."}`
+- Output image over ~16 megapixels (extreme module/height/quiet combos): HTTP 400
 - Characters/length/check-digit not valid for the symbology: HTTP 400
 - Non-GET methods: HTTP 405
 - Unknown paths: HTTP 404

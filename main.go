@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"barcode-rest/internal/server"
 )
@@ -28,5 +29,12 @@ func main() {
 		log.Fatalf("listen failed: %v", err)
 	}
 	fmt.Printf("barcode-rest %s listening on %s\n", server.Version, addr)
-	log.Fatal(http.Serve(ln, server.New()))
+	srv := &http.Server{
+		Handler:           server.New(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	log.Fatal(srv.Serve(ln))
 }
