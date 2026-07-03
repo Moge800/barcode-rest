@@ -168,35 +168,42 @@ func generate1D[T bc.Barcode](opt GenerateOptions, encode func(string) (T, error
 		if opt.FullASCII {
 			label = opt.Text
 		}
-		img = addLabel(img, label, opt.Module)
+		if img, err = addLabel(img, label, opt.Module); err != nil {
+			return nil, err
+		}
 	}
 	return encodePNG(img)
 }
 
 // addLabel appends the human-readable content below the bars, rendered with
 // the built-in 7x13 bitmap font and integer-upscaled so it stays crisp.
-func addLabel(bars *image.Gray, text string, module int) *image.Gray {
+func addLabel(bars *image.Gray, text string, module int) (*image.Gray, error) {
 	face := basicfont.Face7x13
 	textW := font.MeasureString(face, text).Ceil()
 	if textW == 0 {
-		return bars
+		return bars, nil
 	}
 	scale := max(module, 2)
 	for scale > 1 && textW*scale > bars.Rect.Dx() {
 		scale--
 	}
 
+	barsH := bars.Rect.Dy()
+	outW, outH := bars.Rect.Dx(), barsH+face.Height*scale+2*scale
+	if outW*outH > maxPixels {
+		return nil, ErrTooLarge
+	}
+
 	small := image.NewGray(image.Rect(0, 0, textW, face.Height))
 	whiteFill(small)
 	(&font.Drawer{Dst: small, Src: image.Black, Face: face, Dot: fixed.P(0, face.Ascent)}).DrawString(text)
 
-	barsH := bars.Rect.Dy()
-	out := image.NewGray(image.Rect(0, 0, bars.Rect.Dx(), barsH+face.Height*scale+2*scale))
+	out := image.NewGray(image.Rect(0, 0, outW, outH))
 	whiteFill(out)
 	copy(out.Pix, bars.Pix) // same width, so rows line up
 	ox := (out.Rect.Dx() - textW*scale) / 2
 	scaleInto(out, image.Rect(ox, barsH, ox+textW*scale, barsH+face.Height*scale), small)
-	return out
+	return out, nil
 }
 
 func qrLevel(s string) (qr.ErrorCorrectionLevel, error) {

@@ -20,8 +20,8 @@ func New() http.Handler {
 	mux.HandleFunc("/pdf417", handlePDF417)
 	// 80 is the underlying library's limit, not 128
 	mux.HandleFunc("/code128", handle1D(barcode.GenerateCode128PNG, 80, "text contains characters not encodable as code128"))
-	mux.HandleFunc("/code39", handle1D(barcode.GenerateCode39PNG, 128, "text contains characters not encodable as code39 (try fullascii=1 for lowercase etc.)"))
-	mux.HandleFunc("/code93", handle1D(barcode.GenerateCode93PNG, 128, "text contains characters not encodable as code93 (try fullascii=1 for lowercase etc.)"))
+	mux.HandleFunc("/code39", handle1DFullASCII(barcode.GenerateCode39PNG, 128, "text contains characters not encodable as code39 (try fullascii=1 for lowercase etc.)", true))
+	mux.HandleFunc("/code93", handle1DFullASCII(barcode.GenerateCode93PNG, 128, "text contains characters not encodable as code93 (try fullascii=1 for lowercase etc.)", true))
 	mux.HandleFunc("/codabar", handle1D(barcode.GenerateCodabarPNG, 128, "text must be codabar format: start/stop A-D with digits or -$:/.+ between"))
 	mux.HandleFunc("/itf", handle1D(barcode.GenerateITFPNG, 128, "text must be an even number of digits"))
 	mux.HandleFunc("/code25", handle1D(barcode.GenerateCode25PNG, 128, "text must be digits"))

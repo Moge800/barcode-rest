@@ -117,7 +117,7 @@ GET /ean8      7 digits (check digit computed) or 8 digits
 | `module` | no | `3` | Narrow-bar width in px (2–32) |
 | `height` | no | `80` | Bar height in px (20–600) |
 | `quiet` | no | `10` | Quiet-zone modules left/right (0–16); the same pixel margin is added top/bottom |
-| `fullascii` | no | `0` | `/code39` and `/code93` only. `1` enables Extended mode (encodes lowercase etc. as `+N` pairs). The scanner must also support extended mode |
+| `fullascii` | no | `0` | `/code39` and `/code93` only (HTTP 400 elsewhere). `1` enables Extended mode (encodes lowercase etc. as `+N` pairs). The scanner must also support extended mode |
 | `label` | no | `0` | `1` draws the human-readable content below the bars (bitmap font, integer-scaled). Shows what a scanner reads — e.g. EAN check digits are included |
 
 `size` is not supported (the symbols are not square).

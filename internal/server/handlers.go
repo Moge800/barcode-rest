@@ -29,7 +29,7 @@ func handleDataMatrix(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	writePNG(w, opt, barcode.GenerateDataMatrixPNG, "failed to encode datamatrix", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateDataMatrixPNG, "failed to encode datamatrix", http.StatusInternalServerError)
 }
 
 func handleQR(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func handleQR(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "level must be one of L, M, Q, H")
 		return
 	}
-	writePNG(w, opt, barcode.GenerateQRPNG, "failed to encode qr", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateQRPNG, "failed to encode qr", http.StatusInternalServerError)
 }
 
 func handleAztec(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +52,7 @@ func handleAztec(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	writePNG(w, opt, barcode.GenerateAztecPNG, "failed to encode aztec", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateAztecPNG, "failed to encode aztec", http.StatusInternalServerError)
 }
 
 // PDF417 is not square, so size is unsupported; level is the security level 0-8.
@@ -72,25 +72,36 @@ func handlePDF417(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "level must be an integer between 0 and 8")
 		return
 	}
-	writePNG(w, opt, barcode.GeneratePDF417PNG, "text is too long for pdf417", http.StatusBadRequest)
+	writePNG(w, r, opt, barcode.GeneratePDF417PNG, "text is too long for pdf417", http.StatusBadRequest)
 }
 
 // 1D barcodes: module is bar width, quiet default 10 modules per spec,
 // encode failures are caused by the input so they map to 400.
 func handle1D(gen func(barcode.GenerateOptions) ([]byte, error), maxTextBytes int, errMsg string) http.HandlerFunc {
+	return handle1DFullASCII(gen, maxTextBytes, errMsg, false)
+}
+
+// fullASCII: whether the symbology supports the fullascii param (code39/93).
+// Elsewhere it is rejected — silently accepting it would also change the
+// label text away from the scanner-read value (e.g. drop EAN check digits).
+func handle1DFullASCII(gen func(barcode.GenerateOptions) ([]byte, error), maxTextBytes int, errMsg string, fullASCII bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		opt, ok := parse1DOptions(w, r, maxTextBytes)
 		if !ok {
 			return
 		}
 		q := r.URL.Query()
+		if !fullASCII && q.Get("fullascii") != "" {
+			response.WriteError(w, http.StatusBadRequest, "fullascii is only supported for code39 and code93")
+			return
+		}
 		if opt.FullASCII, ok = parseBoolParam(w, q.Get("fullascii"), "fullascii"); !ok {
 			return
 		}
 		if opt.Label, ok = parseBoolParam(w, q.Get("label"), "label"); !ok {
 			return
 		}
-		writePNG(w, opt, gen, errMsg, http.StatusBadRequest)
+		writePNG(w, r, opt, gen, errMsg, http.StatusBadRequest)
 	}
 }
 
@@ -167,10 +178,14 @@ func parseIntParam(w http.ResponseWriter, s, name string, def, min, max int) (in
 // still allocate ~16MB, so unbounded parallelism could exhaust memory.
 var genSem = make(chan struct{}, 4)
 
-func writePNG(w http.ResponseWriter, opt barcode.GenerateOptions, gen func(barcode.GenerateOptions) ([]byte, error), errMsg string, errStatus int) {
-	genSem <- struct{}{}
+func writePNG(w http.ResponseWriter, r *http.Request, opt barcode.GenerateOptions, gen func(barcode.GenerateOptions) ([]byte, error), errMsg string, errStatus int) {
+	select {
+	case genSem <- struct{}{}:
+		defer func() { <-genSem }() // defer: a library panic must not leak the slot
+	case <-r.Context().Done():
+		return // client gone while waiting
+	}
 	png, err := gen(opt)
-	<-genSem
 	if errors.Is(err, barcode.ErrTooSmall) || errors.Is(err, barcode.ErrTooLarge) {
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 		return
