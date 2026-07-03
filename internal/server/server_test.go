@@ -114,6 +114,7 @@ func TestBadRequests(t *testing.T) {
 		// bars fit under the cap but the label re-allocation must not bypass it
 		{"/code39?text=" + strings.Repeat("a", 128) + "&fullascii=1&module=32&height=150&quiet=0&label=1", 400},
 		{"/ean13?text=490123456789&fullascii=1", 400}, // fullascii is code39/93 only
+		{"/ean13?text=490123456789&fullascii=", 400},  // present-but-empty must also be rejected
 		{"/code128?text=A&fullascii=0", 400},
 		{"/pdf417?text=A&level=9", 400},
 		{"/pdf417?text=A&size=255", 400},

@@ -91,7 +91,7 @@ func handle1DFullASCII(gen func(barcode.GenerateOptions) ([]byte, error), maxTex
 			return
 		}
 		q := r.URL.Query()
-		if !fullASCII && q.Get("fullascii") != "" {
+		if !fullASCII && q.Has("fullascii") {
 			response.WriteError(w, http.StatusBadRequest, "fullascii is only supported for code39 and code93")
 			return
 		}
