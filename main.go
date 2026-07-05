@@ -13,6 +13,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "generate" {
+		os.Exit(runGenerate(os.Args[2:]))
+	}
 	hideConsoleIfOwn()
 	port := flag.Int("port", 8787, "listen port")
 	version := flag.Bool("version", false, "print version and exit")

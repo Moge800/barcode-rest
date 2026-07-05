@@ -36,6 +36,22 @@ Print version:
 barcode-rest.exe -version
 ```
 
+### One-shot CLI generation
+
+Generate a PNG directly, without starting the server:
+
+```powershell
+barcode-rest.exe generate datamatrix --text ABC123 --size 256 --output dm.png
+barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
+```
+
+- Same symbologies and parameters as the HTTP endpoints
+  (`--module`, `--quiet`, `--size`, `--height`, `--level`, `--fullascii`, `--label`)
+- `--output -` writes the PNG to stdout for pipelines
+  (note: PowerShell's `>` is not binary-safe — use a file path there)
+- The HTTP API still never accepts file paths; only the CLI writes files,
+  and only where you explicitly specify
+
 ### Auto-start (resident)
 
 Just put a shortcut to `barcode-rest.exe` in the `shell:startup` folder.

@@ -35,6 +35,20 @@ barcode-rest.exe -port 9999
 barcode-rest.exe -version
 ```
 
+### CLIで単発生成
+
+サーバーを起動せずにPNGを直接生成できる。
+
+```powershell
+barcode-rest.exe generate datamatrix --text ABC123 --size 256 --output dm.png
+barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
+```
+
+- シンボロジーとパラメータはHTTPエンドポイントと同じ
+  （`--module`, `--quiet`, `--size`, `--height`, `--level`, `--fullascii`, `--label`）
+- `--output -` でstdoutにPNGを出力（パイプ用。PowerShellの `>` はバイナリを壊すので、その場合はファイルパス指定を使う）
+- HTTP API側は今後もファイルパスを受け取らない。ファイルを書くのはCLIだけで、書き先は明示指定した場所のみ
+
 ### 自動起動（常駐）
 
 `shell:startup` フォルダに `barcode-rest.exe` のショートカットを置くだけでよい。
