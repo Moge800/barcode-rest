@@ -164,6 +164,7 @@ http://127.0.0.1:8787/ean13?text=490123456789
 - [Excel VBA標準モジュール](example/vba_example.bas)（MSXML2.XMLHTTPとADODB.Streamを使用するためWindows版Excel向け）
 - [Pythonクライアント](example/python_example.py)（標準ライブラリのみ。`uv run example/python_example.py` で実行）
 - [HTMLクライアント](example/html_example.html)（ブラウザで直接開く）
+- [CLIスクリプト](example/cli_example.ps1)（PowerShell。サーバーなしで `generate` によりPNG生成。Linuxバイナリでも同じフラグが使える）
 
 barcode-restを別ポートで起動する場合は、各サンプルの `API_BASE` も変更する。
 

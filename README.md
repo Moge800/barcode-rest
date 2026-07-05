@@ -170,6 +170,7 @@ Ready-to-run examples:
 - [Excel VBA standard module](example/vba_example.bas) (Windows Excel only — uses MSXML2.XMLHTTP and ADODB.Stream)
 - [Python client](example/python_example.py) (standard library only; run with `uv run example/python_example.py`)
 - [HTML client](example/html_example.html) (open directly in a browser)
+- [CLI script](example/cli_example.ps1) (PowerShell; generates PNGs via `generate` without the server — same flags work with the Linux binary)
 
 If barcode-rest is started with a different port, update `API_BASE` in the example.
 

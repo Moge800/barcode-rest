@@ -101,3 +101,6 @@ AGENTS.md
 
 # Go build backup files
 *.exe~
+
+# example script output
+example/cli_output/
