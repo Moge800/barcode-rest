@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -61,7 +62,9 @@ func runGenerate(args []string) int {
 		return generateUsage()
 	}
 
-	fs := flag.NewFlagSet("generate "+name, flag.ExitOnError)
+	// ContinueOnError: parse failures return instead of os.Exit, so
+	// runGenerate stays testable and reusable from Go code.
+	fs := flag.NewFlagSet("generate "+name, flag.ContinueOnError)
 	var opt barcode.GenerateOptions
 	fs.StringVar(&opt.Text, "text", "", "text to encode (required)")
 	fs.IntVar(&opt.Module, "module", sym.module, "pixels per module (narrow-bar width for 1D)")
@@ -82,7 +85,12 @@ func runGenerate(args []string) int {
 	case "pdf417":
 		fs.StringVar(&opt.Level, "level", "2", "security level (0-8)")
 	}
-	fs.Parse(args[1:])
+	if err := fs.Parse(args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2 // flag package already printed the error and usage to stderr
+	}
 
 	// ponytail: no HTTP-style range checks here — the CLI is the user's own
 	// machine and the generator's pixel cap bounds memory. Only reject values

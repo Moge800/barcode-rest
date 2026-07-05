@@ -41,6 +41,9 @@ func TestRunGenerateErrors(t *testing.T) {
 		{"missing text", []string{"qr", "--output", out}, 2},
 		{"missing output", []string{"qr", "--text", "A"}, 2},
 		{"encode failure", []string{"ean13", "--text", "hello", "--output", out}, 1},
+		// must return, not os.Exit — ContinueOnError keeps runGenerate reusable
+		{"unknown flag", []string{"qr", "--nope", "--text", "A", "--output", out}, 2},
+		{"help", []string{"qr", "--help"}, 0},
 	}
 	for _, c := range cases {
 		if code := runGenerate(c.args); code != c.want {
