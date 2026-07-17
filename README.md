@@ -102,7 +102,7 @@ Returns a DataMatrix PNG.
 
 | Param | Required | Default | Description |
 |---|---|---|---|
-| `text` | yes | — | String to encode (max 128 bytes UTF-8) |
+| `text` | yes | — | String to encode (max 3116 bytes UTF-8) |
 | `module` | no | `10` | Pixels per module (2–32) |
 | `quiet` | no | `4` | Quiet-zone modules around the code (0–16) |
 | `size` | no | — | Output edge length in px (16–2048). Overrides `module`: draws at the largest integer module that fits, centered with white padding. The minimum usable size depends on the encoded data, symbol type, and quiet zone — HTTP 400 is returned if the symbol cannot fit |
@@ -113,7 +113,7 @@ Returns a QR code PNG.
 
 | Param | Required | Default | Description |
 |---|---|---|---|
-| `text` | yes | — | String to encode (max 256 bytes UTF-8) |
+| `text` | yes | — | String to encode (max 7089 bytes UTF-8) |
 | `module` | no | `10` | Pixels per module (2–32) |
 | `quiet` | no | `4` | Quiet-zone modules around the code (0–16) |
 | `level` | no | `M` | Error correction level (L / M / Q / H) |
@@ -122,7 +122,7 @@ Returns a QR code PNG.
 ### GET /aztec
 
 Returns an Aztec code PNG. Same parameters as `/datamatrix`
-(`text` max 256 bytes). Error correction is fixed at 33%.
+(`text` max 3748 bytes). Error correction is fixed at 33%.
 
 ### GET /pdf417
 
@@ -130,7 +130,7 @@ Returns a PDF417 (stacked 2D) PNG.
 
 | Param | Required | Default | Description |
 |---|---|---|---|
-| `text` | yes | — | String to encode (max 256 bytes UTF-8) |
+| `text` | yes | — | String to encode (max 2610 bytes UTF-8) |
 | `module` | no | `3` | Module width in px (2–32). Row height is automatically 2 modules |
 | `quiet` | no | `2` | Quiet-zone modules (0–16) |
 | `level` | no | `2` | Security level (0–8) |
@@ -166,6 +166,10 @@ GET /ean8      7 digits (check digit computed) or 8 digits
 ### Errors
 
 - Invalid parameters: HTTP 400 `{"ok": false, "error": "..."}`
+- Text too long for the symbology: HTTP 400. The 2D `text` byte caps above are each
+  standard's maximum capacity in its densest (numeric) mode; letters, binary data or a
+  higher QR error-correction level hold fewer characters, and text that fits the byte cap
+  but not the actual symbol is still rejected with a 400 (never a 500)
 - Output image over ~16 megapixels (extreme module/height/quiet combinations or a large label): HTTP 400
 - Characters/length/check-digit not valid for the symbology: HTTP 400
 - Non-GET methods: HTTP 405

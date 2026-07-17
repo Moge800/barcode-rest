@@ -46,16 +46,29 @@ func handleShutdown(shutdown func()) http.HandlerFunc {
 	}
 }
 
+// Max text length per 2D symbology, in UTF-8 bytes, set to each standard's
+// maximum data capacity in its densest (numeric) mode — measured against the
+// boombuler encoder. Longer input cannot encode in any mode, so it is rejected
+// up front. Input that fits the byte cap but not the chosen content type or
+// error-correction level fails inside the encoder and is reported as 400 too
+// (see the writePNG calls below), never 500.
+const (
+	maxDataMatrixBytes = 3116 // 144x144 symbol, numeric
+	maxQRBytes         = 7089 // version 40, level L, numeric
+	maxAztecBytes      = 3748 // largest layer at 33% ECC, numeric
+	maxPDF417Bytes     = 2610 // security level 2, numeric
+)
+
 func handleDataMatrix(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 128, 10, 4)
+	opt, ok := parseOptions(w, r, maxDataMatrixBytes, 10, 4)
 	if !ok {
 		return
 	}
-	writePNG(w, r, opt, barcode.GenerateDataMatrixPNG, "failed to encode datamatrix", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateDataMatrixPNG, "text too long to encode as datamatrix", http.StatusBadRequest)
 }
 
 func handleQR(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 256, 10, 4)
+	opt, ok := parseOptions(w, r, maxQRBytes, 10, 4)
 	if !ok {
 		return
 	}
@@ -66,20 +79,20 @@ func handleQR(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "level must be one of L, M, Q, H")
 		return
 	}
-	writePNG(w, r, opt, barcode.GenerateQRPNG, "failed to encode qr", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateQRPNG, "text too long to encode as qr (try a lower error-correction level)", http.StatusBadRequest)
 }
 
 func handleAztec(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 256, 10, 4)
+	opt, ok := parseOptions(w, r, maxAztecBytes, 10, 4)
 	if !ok {
 		return
 	}
-	writePNG(w, r, opt, barcode.GenerateAztecPNG, "failed to encode aztec", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateAztecPNG, "text too long to encode as aztec", http.StatusBadRequest)
 }
 
 // PDF417 is not square, so size is unsupported; level is the security level 0-8.
 func handlePDF417(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 256, 3, 2)
+	opt, ok := parseOptions(w, r, maxPDF417Bytes, 3, 2)
 	if !ok {
 		return
 	}

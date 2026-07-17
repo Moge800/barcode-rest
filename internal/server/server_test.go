@@ -80,14 +80,20 @@ func hasBlack(img image.Image) bool {
 }
 
 func TestBadRequests(t *testing.T) {
-	long := strings.Repeat("a", 129)
 	cases := []struct {
 		path string
 		want int
 	}{
 		{"/datamatrix", 400},
 		{"/datamatrix?text=", 400},
-		{"/datamatrix?text=" + long, 400},
+		{"/datamatrix?text=" + strings.Repeat("a", maxDataMatrixBytes+1), 400}, // over byte cap
+		// fits the byte cap but exceeds the symbol's capacity for this content:
+		// must be a clean 400, not a 500.
+		{"/datamatrix?text=" + strings.Repeat("A", 2000), 400},
+		{"/qr?text=" + strings.Repeat("A", maxQRBytes+1), 400},          // over byte cap
+		{"/qr?text=" + strings.Repeat("A", 2000) + "&level=H", 400},     // exceeds level-H capacity
+		{"/aztec?text=" + strings.Repeat("A", maxAztecBytes+1), 400},    // over byte cap
+		{"/pdf417?text=" + strings.Repeat("A", maxPDF417Bytes+1), 400},  // over byte cap
 		{"/datamatrix?text=A&module=1", 400},
 		{"/datamatrix?text=A&module=999", 400},
 		{"/datamatrix?text=A&quiet=-1", 400},
