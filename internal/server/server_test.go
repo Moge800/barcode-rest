@@ -177,6 +177,34 @@ func TestLabel(t *testing.T) {
 	}
 }
 
+// Large-but-valid payloads near each symbology's capacity must encode to a
+// real PNG (200), not just be rejected — this is the case the old 128/256-byte
+// caps could never reach.
+func TestLargeInputEncodes(t *testing.T) {
+	digits := func(n int) string { return strings.Repeat("1", n) }
+	cases := []string{
+		"/datamatrix?text=" + digits(3000),         // < 3116 numeric cap
+		"/datamatrix?text=" + digits(3116),         // exactly the numeric cap
+		"/qr?text=" + digits(3000),                 // default level M
+		"/qr?text=" + digits(7089) + "&level=L",    // QR-L numeric cap
+		"/aztec?text=" + digits(3000),              // < 3748
+		"/pdf417?text=" + digits(2000),             // < 2610 at security level 2
+	}
+	for _, path := range cases {
+		rec := do(t, "GET", path)
+		if rec.Code != 200 {
+			t.Errorf("GET %s = %d, want 200", path, rec.Code)
+			continue
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "image/png" {
+			t.Errorf("GET %s Content-Type = %q, want image/png", path, ct)
+		}
+		if _, err := png.Decode(rec.Body); err != nil {
+			t.Errorf("GET %s: decode png: %v", path, err)
+		}
+	}
+}
+
 func TestShutdown(t *testing.T) {
 	called := 0
 	h := New(func() { called++ })
