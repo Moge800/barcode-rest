@@ -17,6 +17,15 @@ Excelの出荷票・現品票などに貼り付けるバーコードのPNG画像
 - リクエストでファイルパスを受け取らない
 - `text` の内容はログに出力しない
 
+## ダウンロード
+
+Windows / Linux 向けのビルド済みバイナリは、各GitHub Releaseに添付されています。
+
+**https://github.com/moge800/barcode-rest/releases/latest**
+
+各リリースには公開バイナリの `checksums.txt`（SHA-256）が含まれます。
+ソースからビルドする場合は [ビルド](#ビルド) を参照してください。
+
 ## 起動方法
 
 ```powershell
@@ -53,7 +62,8 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 
 `shell:startup` フォルダに `barcode-rest.exe` のショートカットを置くだけでよい。
 ダブルクリックやスタートアップからの起動時はコンソールウィンドウを自動で非表示にする
-（シェルから実行した場合は通常どおり表示される）。停止は `taskkill /im barcode-rest.exe`。
+（シェルから実行した場合は通常どおり表示される）。停止は `POST /shutdown`（下記参照）、
+Ctrl-C、または `taskkill /im barcode-rest.exe`。
 
 ## エンドポイント
 
@@ -66,6 +76,21 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 ```
 
 `version` はビルド時に埋め込まれるリリースタグ（ローカルビルドでは `dev`）。
+
+### POST /shutdown
+
+サーバーに正常終了を依頼する。HTTP 200で以下を返し、
+
+```json
+{"ok": true}
+```
+
+その後、新規接続の受け付けを止め、処理中のリクエストを捌ききってからプロセスを終了する。
+`barcode-rest` を常駐ヘルパーとして起動する呼び出し側（例: `barcodekit`）が、
+用済み時にきれいに停止させる用途を想定している。
+
+`POST` のみ対応で、`GET /shutdown` はHTTP 405を返す。ブラウザでのアクセス・リンクプレビュー・
+誤クリックでサーバーが落ちないようにするため。Ctrl-C / SIGTERM でも同じ正常終了を行う。
 
 ### GET /datamatrix
 
@@ -183,7 +208,12 @@ go build -o barcode-rest.exe
 
 ## ライセンス
 
-MIT License
+Apache License 2.0 — [LICENSE](LICENSE) および [NOTICE](NOTICE) を参照。
 
-バーコード生成に [github.com/boombuler/barcode](https://github.com/boombuler/barcode) (MIT License)、
-ラベルフォントに [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (BSD-3-Clause) を使用しています。
+v0.2.x 以前のリリースは MIT License で配布していました。v0.3.0 以降は Apache-2.0 です。
+
+サードパーティコンポーネント（変更なし）:
+
+- バーコード生成: [github.com/boombuler/barcode](https://github.com/boombuler/barcode) (MIT License)
+- ラベルフォント: [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (BSD-3-Clause)
+- Go 標準ライブラリ / ランタイム (BSD-3-Clause)

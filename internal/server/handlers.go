@@ -24,6 +24,28 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleShutdown stops the server after replying. POST-only on purpose: a
+// browser visit, link preview or a stray GET must not be able to take the
+// resident server down. The reply is flushed before shutdown is triggered so
+// the client always sees {"ok":true}; the trigger itself must not block here,
+// because a graceful stop waits for this very request to finish.
+func handleShutdown(shutdown func()) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		if shutdown != nil {
+			shutdown()
+		}
+	}
+}
+
 func handleDataMatrix(w http.ResponseWriter, r *http.Request) {
 	opt, ok := parseOptions(w, r, 128, 10, 4)
 	if !ok {

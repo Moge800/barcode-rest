@@ -18,6 +18,15 @@ and similar forms.
 - Never accepts file paths in requests
 - Never logs `text` contents
 
+## Download
+
+Prebuilt binaries for Windows and Linux are attached to each GitHub Release:
+
+**https://github.com/moge800/barcode-rest/releases/latest**
+
+Each release includes `checksums.txt` (SHA-256) for the published binaries.
+To build from source instead, see [Build](#build).
+
 ## Usage
 
 ```powershell
@@ -57,7 +66,7 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 Just put a shortcut to `barcode-rest.exe` in the `shell:startup` folder.
 When launched by double-click or startup, the console window hides itself
 automatically (it stays visible when run from a shell).
-Stop with `taskkill /im barcode-rest.exe`.
+Stop it with `POST /shutdown` (see below), Ctrl-C, or `taskkill /im barcode-rest.exe`.
 
 ## Endpoints
 
@@ -70,6 +79,22 @@ Liveness check. Returns HTTP 200 with:
 ```
 
 `version` is the release tag embedded at build time (`dev` for local builds).
+
+### POST /shutdown
+
+Asks the server to stop gracefully. Replies HTTP 200 with:
+
+```json
+{"ok": true}
+```
+
+then stops accepting new connections and drains in-flight requests before the
+process exits. Intended for callers that start `barcode-rest` as a resident
+helper (e.g. `barcodekit`) and want to stop it cleanly when done.
+
+`POST` only — `GET /shutdown` returns HTTP 405, so a browser visit, link
+preview or stray click cannot take the server down. Ctrl-C / SIGTERM also
+trigger the same graceful shutdown.
 
 ### GET /datamatrix
 
@@ -189,7 +214,13 @@ go build -o barcode-rest.exe
 
 ## License
 
-MIT License
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-Barcode encoding by [github.com/boombuler/barcode](https://github.com/boombuler/barcode) (MIT License).
-Label font from [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (BSD-3-Clause).
+Releases up to and including v0.2.x were distributed under the MIT License;
+v0.3.0 and later are Apache-2.0.
+
+Third-party components (unchanged):
+
+- Barcode encoding: [github.com/boombuler/barcode](https://github.com/boombuler/barcode) (MIT License)
+- Label font: [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (BSD-3-Clause)
+- Go standard library / runtime (BSD-3-Clause)

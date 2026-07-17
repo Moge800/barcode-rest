@@ -33,7 +33,7 @@ func do(t *testing.T, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
 	rec := httptest.NewRecorder()
-	New().ServeHTTP(rec, req)
+	New(nil).ServeHTTP(rec, req)
 	return rec
 }
 
@@ -168,6 +168,37 @@ func TestLabel(t *testing.T) {
 	}
 	if lc.Width != pc.Width {
 		t.Errorf("labeled width %d != plain width %d", lc.Width, pc.Width)
+	}
+}
+
+func TestShutdown(t *testing.T) {
+	called := 0
+	h := New(func() { called++ })
+
+	// GET must not stop the server (browser / preview / stray click).
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/shutdown", nil))
+	if rec.Code != 405 {
+		t.Errorf("GET /shutdown = %d, want 405", rec.Code)
+	}
+	if called != 0 {
+		t.Error("GET /shutdown must not trigger shutdown")
+	}
+
+	// POST replies {"ok":true} and triggers shutdown exactly once.
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("POST", "/shutdown", nil))
+	if rec.Code != 200 {
+		t.Fatalf("POST /shutdown = %d, want 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
+		t.Errorf("POST /shutdown Content-Type = %q, want application/json; charset=utf-8", ct)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != `{"ok":true}` {
+		t.Errorf("POST /shutdown body = %q, want {\"ok\":true}", body)
+	}
+	if called != 1 {
+		t.Errorf("POST /shutdown triggered shutdown %d times, want 1", called)
 	}
 }
 
