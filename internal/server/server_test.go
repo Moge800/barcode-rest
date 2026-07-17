@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/png"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -201,6 +202,59 @@ func TestLargeInputEncodes(t *testing.T) {
 		}
 		if _, err := png.Decode(rec.Body); err != nil {
 			t.Errorf("GET %s: decode png: %v", path, err)
+		}
+	}
+}
+
+// The 2D symbologies encode arbitrary UTF-8 bytes, so Japanese text must
+// produce a valid, non-blank PNG. QR round-trips correctly through qr.Auto —
+// verified out-of-band by decoding the output with a QR reader (こんにちは,
+// full-width ／①②③ etc. all decode back byte-for-byte).
+func TestJapaneseUTF8(t *testing.T) {
+	const jp = "出荷票 日本語テスト ①②③"
+	for _, sym := range []string{"qr", "datamatrix", "aztec", "pdf417"} {
+		path := "/" + sym + "?text=" + url.QueryEscape(jp)
+		rec := do(t, "GET", path)
+		if rec.Code != 200 {
+			t.Errorf("GET %s = %d, want 200", path, rec.Code)
+			continue
+		}
+		if ct := rec.Header().Get("Content-Type"); ct != "image/png" {
+			t.Errorf("GET %s Content-Type = %q, want image/png", path, ct)
+		}
+		img, err := png.Decode(rec.Body)
+		if err != nil {
+			t.Errorf("GET %s: decode png: %v", path, err)
+			continue
+		}
+		if !hasBlack(img) {
+			t.Errorf("GET %s image is blank", path)
+		}
+	}
+}
+
+// Each 1D symbology must reject characters outside its own set — Japanese
+// (non-ASCII) and a symbol-set violation — with 400, never silently encoding
+// something a scanner would misread.
+func TestCharsetRejected(t *testing.T) {
+	jp := url.QueryEscape("日本語")
+	cases := []struct{ path, why string }{
+		{"/code128?text=" + jp, "code128 non-ASCII"},
+		{"/code39?text=" + jp, "code39 non-ASCII"},
+		{"/code39?text=nullpo", "code39 lowercase not in base set"},
+		{"/code39?text=" + url.QueryEscape("@"), "code39 symbol not in set"},
+		{"/code93?text=" + jp, "code93 non-ASCII"},
+		{"/code93?text=nullpo", "code93 lowercase not in base set"},
+		{"/codabar?text=" + url.QueryEscape("A12@B"), "codabar symbol not in set"},
+		{"/codabar?text=A12x45B", "codabar lowercase in body"},
+		{"/itf?text=12ab", "itf non-digit"},
+		{"/code25?text=12a45", "code25 non-digit"},
+		{"/ean13?text=49012345678X", "ean13 non-digit"},
+		{"/ean8?text=490123X", "ean8 non-digit"},
+	}
+	for _, c := range cases {
+		if rec := do(t, "GET", c.path); rec.Code != 400 {
+			t.Errorf("%s: GET %s = %d, want 400", c.why, c.path, rec.Code)
 		}
 	}
 }
