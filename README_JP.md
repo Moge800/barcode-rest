@@ -19,7 +19,7 @@ Excelの出荷票・現品票などに貼り付けるバーコードのPNG画像
 
 ## ダウンロード
 
-Windows / Linux 向けのビルド済みバイナリは、各GitHub Releaseに添付されています。
+Windows / Linux / macOS（Intel・Apple Silicon）向けのビルド済みバイナリは、各GitHub Releaseに添付されています。
 
 **https://github.com/moge800/barcode-rest/releases/latest**
 
