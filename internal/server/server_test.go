@@ -34,7 +34,7 @@ func do(t *testing.T, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
 	rec := httptest.NewRecorder()
-	New(nil).ServeHTTP(rec, req)
+	New(nil, "").ServeHTTP(rec, req)
 	return rec
 }
 
@@ -259,34 +259,48 @@ func TestCharsetRejected(t *testing.T) {
 	}
 }
 
-func TestShutdown(t *testing.T) {
+func TestExit(t *testing.T) {
+	const token = "s3cr3t-token"
 	called := 0
-	h := New(func() { called++ })
+	h := New(func() { called++ }, token)
+
+	post := func(target string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("POST", target, nil))
+		return rec
+	}
 
 	// GET must not stop the server (browser / preview / stray click).
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("GET", "/shutdown", nil))
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/exit?token="+token, nil))
 	if rec.Code != 405 {
-		t.Errorf("GET /shutdown = %d, want 405", rec.Code)
-	}
-	if called != 0 {
-		t.Error("GET /shutdown must not trigger shutdown")
+		t.Errorf("GET /exit = %d, want 405", rec.Code)
 	}
 
-	// POST replies {"ok":true} and triggers shutdown exactly once.
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("POST", "/shutdown", nil))
+	// Missing or wrong token must be forbidden, so a cross-site POST can't stop it.
+	if rec := post("/exit"); rec.Code != 403 {
+		t.Errorf("POST /exit (no token) = %d, want 403", rec.Code)
+	}
+	if rec := post("/exit?token=wrong"); rec.Code != 403 {
+		t.Errorf("POST /exit (wrong token) = %d, want 403", rec.Code)
+	}
+	if called != 0 {
+		t.Fatalf("exit triggered %d times before a valid token, want 0", called)
+	}
+
+	// Correct token replies {"ok":true} and triggers exit exactly once.
+	rec = post("/exit?token=" + token)
 	if rec.Code != 200 {
-		t.Fatalf("POST /shutdown = %d, want 200", rec.Code)
+		t.Fatalf("POST /exit = %d, want 200", rec.Code)
 	}
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
-		t.Errorf("POST /shutdown Content-Type = %q, want application/json; charset=utf-8", ct)
+		t.Errorf("POST /exit Content-Type = %q, want application/json; charset=utf-8", ct)
 	}
 	if body := strings.TrimSpace(rec.Body.String()); body != `{"ok":true}` {
-		t.Errorf("POST /shutdown body = %q, want {\"ok\":true}", body)
+		t.Errorf("POST /exit body = %q, want {\"ok\":true}", body)
 	}
 	if called != 1 {
-		t.Errorf("POST /shutdown triggered shutdown %d times, want 1", called)
+		t.Errorf("POST /exit triggered exit %d times, want 1", called)
 	}
 }
 

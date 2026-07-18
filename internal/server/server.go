@@ -12,12 +12,13 @@ import (
 var Version = "dev"
 
 // New builds the HTTP handler. shutdown, if non-nil, is invoked by the
-// POST /shutdown endpoint after the response has been written, so the caller
-// (barcodekit and similar) can ask the resident server to stop gracefully.
-func New(shutdown func()) http.Handler {
+// POST /exit endpoint (after the response is written and only when ?token=
+// matches exitToken) so the caller (barcodekit and similar) can ask the
+// resident server to stop gracefully.
+func New(shutdown func(), exitToken string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
-	mux.HandleFunc("/shutdown", handleShutdown(shutdown))
+	mux.HandleFunc("/exit", handleExit(shutdown, exitToken))
 	mux.HandleFunc("/datamatrix", handleDataMatrix)
 	mux.HandleFunc("/qr", handleQR)
 	mux.HandleFunc("/aztec", handleAztec)

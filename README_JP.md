@@ -44,6 +44,12 @@ barcode-rest.exe -port 9999
 barcode-rest.exe -version
 ```
 
+exit token を固定する（未指定なら起動時にランダム生成して表示）— [POST /exit](#post-exit) を参照:
+
+```powershell
+barcode-rest.exe -exit-token abc123
+```
+
 ### CLIで単発生成
 
 サーバーを起動せずにPNGを直接生成できる。
@@ -62,7 +68,7 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 
 `shell:startup` フォルダに `barcode-rest.exe` のショートカットを置くだけでよい。
 ダブルクリックやスタートアップからの起動時はコンソールウィンドウを自動で非表示にする
-（シェルから実行した場合は通常どおり表示される）。停止は `POST /shutdown`（下記参照）、
+（シェルから実行した場合は通常どおり表示される）。停止は `POST /exit?token=...`（下記参照）、
 Ctrl-C、または `taskkill /im barcode-rest.exe`。
 
 ## エンドポイント
@@ -77,9 +83,10 @@ Ctrl-C、または `taskkill /im barcode-rest.exe`。
 
 `version` はビルド時に埋め込まれるリリースタグ（ローカルビルドでは `dev`）。
 
-### POST /shutdown
+### POST /exit
 
-サーバーに正常終了を依頼する。HTTP 200で以下を返し、
+**`barcode-rest` プロセス**を正常終了する（WindowsやPC自体をシャットダウンするものではなく、
+このプログラムを終了するだけ）。HTTP 200で以下を返し、
 
 ```json
 {"ok": true}
@@ -89,8 +96,22 @@ Ctrl-C、または `taskkill /im barcode-rest.exe`。
 `barcode-rest` を常駐ヘルパーとして起動する呼び出し側（例: `barcodekit`）が、
 用済み時にきれいに停止させる用途を想定している。
 
-`POST` のみ対応で、`GET /shutdown` はHTTP 405を返す。ブラウザでのアクセス・リンクプレビュー・
-誤クリックでサーバーが落ちないようにするため。Ctrl-C / SIGTERM でも同じ正常終了を行う。
+token が必須:
+
+| パラメータ | 必須 | 内容 |
+|---|---|---|
+| `token` | 必須 | サーバーの exit token と一致する必要がある。起動時に `-exit-token <token>` で固定値を渡すか、起動時に表示される `exit token:` 行のランダム値を使う。なし・不一致は HTTP 403 |
+
+閲覧中のWebページからサーバーをうっかりまたはCSRF的に落とされないよう、2段構えで守る:
+`POST` のみ対応（`GET /exit` は HTTP 405 なので、ブラウザでのアクセス・リンクプレビュー・
+誤クリックでは何も起きない）。加えて、外部サイトの `fetch`／フォームPOSTが `127.0.0.1` に
+到達しても token を推測できないため HTTP 403 になる。Ctrl-C / SIGTERM でも同じ正常終了を行う。
+
+```powershell
+# 呼び出し側が token を指定する場合
+barcode-rest.exe -exit-token abc123
+curl -X POST "http://127.0.0.1:8787/exit?token=abc123"
+```
 
 ### GET /datamatrix
 
@@ -166,7 +187,8 @@ GET /ean8      7桁（チェックデジット自動計算）または8桁の数
   実際のシンボルに入り切らないテキストは 400 で返します（500 にはしません）
 - 出力画像が約16メガピクセル超（極端なmodule/height/quietの組み合わせや大きなラベル）: HTTP 400
 - 各シンボロジーで使えない文字・桁数・チェックデジット不正: HTTP 400
-- エンドポイントに対する不正なメソッド（生成エンドポイントへのGET以外、`/shutdown` へのPOST以外）: HTTP 405
+- エンドポイントに対する不正なメソッド（生成エンドポイントへのGET以外、`/exit` へのPOST以外）: HTTP 405
+- `POST /exit` で `token` がない・一致しない: HTTP 403
 - 未定義パス: HTTP 404
 
 ## 使用例

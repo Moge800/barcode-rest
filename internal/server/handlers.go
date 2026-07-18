@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,15 +25,26 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleShutdown stops the server after replying. POST-only on purpose: a
-// browser visit, link preview or a stray GET must not be able to take the
-// resident server down. The reply is flushed before shutdown is triggered so
-// the client always sees {"ok":true}; the trigger itself must not block here,
-// because a graceful stop waits for this very request to finish.
-func handleShutdown(shutdown func()) http.HandlerFunc {
+// handleExit stops the barcode-rest process (not the PC/OS) after replying.
+// Two guards keep a web page the user happens to be viewing from killing the
+// resident server:
+//   - POST only, so a browser visit, link preview or stray GET does nothing.
+//   - a ?token= that must match the server's exit token (constant-time). A
+//     cross-site fetch/form POST can reach 127.0.0.1 but cannot guess the
+//     token, so it gets 403.
+//
+// The reply is flushed before shutdown is triggered so the client always sees
+// {"ok":true}; the trigger must not block here, because a graceful stop waits
+// for this very request to finish.
+func handleExit(shutdown func(), token string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		got := r.URL.Query().Get("token")
+		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
+			response.WriteError(w, http.StatusForbidden, "invalid or missing token")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")

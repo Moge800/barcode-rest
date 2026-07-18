@@ -45,6 +45,13 @@ Print version:
 barcode-rest.exe -version
 ```
 
+Set a fixed exit token (otherwise a random one is generated and printed at
+startup) — see [POST /exit](#post-exit):
+
+```powershell
+barcode-rest.exe -exit-token abc123
+```
+
 ### One-shot CLI generation
 
 Generate a PNG directly, without starting the server:
@@ -66,7 +73,7 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 Just put a shortcut to `barcode-rest.exe` in the `shell:startup` folder.
 When launched by double-click or startup, the console window hides itself
 automatically (it stays visible when run from a shell).
-Stop it with `POST /shutdown` (see below), Ctrl-C, or `taskkill /im barcode-rest.exe`.
+Stop it with `POST /exit?token=...` (see below), Ctrl-C, or `taskkill /im barcode-rest.exe`.
 
 ## Endpoints
 
@@ -80,9 +87,10 @@ Liveness check. Returns HTTP 200 with:
 
 `version` is the release tag embedded at build time (`dev` for local builds).
 
-### POST /shutdown
+### POST /exit
 
-Asks the server to stop gracefully. Replies HTTP 200 with:
+Stops the **`barcode-rest` process** gracefully — this does not shut down
+Windows or the PC, it only ends this program. Replies HTTP 200 with:
 
 ```json
 {"ok": true}
@@ -92,9 +100,23 @@ then stops accepting new connections and drains in-flight requests before the
 process exits. Intended for callers that start `barcode-rest` as a resident
 helper (e.g. `barcodekit`) and want to stop it cleanly when done.
 
-`POST` only — `GET /shutdown` returns HTTP 405, so a browser visit, link
-preview or stray click cannot take the server down. Ctrl-C / SIGTERM also
-trigger the same graceful shutdown.
+Requires a token:
+
+| Param | Required | Description |
+|---|---|---|
+| `token` | yes | Must equal the server's exit token. Pass a fixed one with `-exit-token <token>` at startup, or use the random token printed on the `exit token:` startup line. A missing or wrong token returns HTTP 403 |
+
+Two guards stop a web page you happen to be viewing from killing the resident
+server: it is `POST` only (a `GET /exit` returns HTTP 405, so a browser visit,
+link preview or stray click does nothing), and a cross-site `fetch`/form POST
+that reaches `127.0.0.1` still cannot guess the token, so it gets HTTP 403.
+Ctrl-C / SIGTERM also trigger the same graceful shutdown.
+
+```powershell
+# with a caller-supplied token
+barcode-rest.exe -exit-token abc123
+curl -X POST "http://127.0.0.1:8787/exit?token=abc123"
+```
 
 ### GET /datamatrix
 
@@ -172,7 +194,8 @@ GET /ean8      7 digits (check digit computed) or 8 digits
   but not the actual symbol is still rejected with a 400 (never a 500)
 - Output image over ~16 megapixels (extreme module/height/quiet combinations or a large label): HTTP 400
 - Characters/length/check-digit not valid for the symbology: HTTP 400
-- Wrong method for the endpoint (non-GET on a generation endpoint, non-POST on `/shutdown`): HTTP 405
+- Wrong method for the endpoint (non-GET on a generation endpoint, non-POST on `/exit`): HTTP 405
+- `POST /exit` with a missing or wrong `token`: HTTP 403
 - Unknown paths: HTTP 404
 
 ## Examples
