@@ -20,7 +20,7 @@ and similar forms.
 
 ## Download
 
-Prebuilt binaries for Windows, Linux and macOS (Intel + Apple Silicon) are attached to each GitHub Release:
+New releases include prebuilt binaries for Windows, Linux and macOS (Intel + Apple Silicon):
 
 **https://github.com/moge800/barcode-rest/releases/latest**
 
