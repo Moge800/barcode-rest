@@ -18,6 +18,15 @@ and similar forms.
 - Never accepts file paths in requests
 - Never logs `text` contents
 
+## Download
+
+Prebuilt binaries for Windows and Linux are attached to each GitHub Release:
+
+**https://github.com/moge800/barcode-rest/releases/latest**
+
+Each release includes `checksums.txt` (SHA-256) for the published binaries.
+To build from source instead, see [Build](#build).
+
 ## Usage
 
 ```powershell
@@ -34,6 +43,13 @@ Print version:
 
 ```powershell
 barcode-rest.exe -version
+```
+
+Set a fixed exit token (otherwise a random one is generated and printed at
+startup) — see [POST /exit](#post-exit):
+
+```powershell
+barcode-rest.exe -exit-token abc123
 ```
 
 ### One-shot CLI generation
@@ -57,7 +73,11 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 Just put a shortcut to `barcode-rest.exe` in the `shell:startup` folder.
 When launched by double-click or startup, the console window hides itself
 automatically (it stays visible when run from a shell).
-Stop with `taskkill /im barcode-rest.exe`.
+Stop it with `POST /exit?token=...` (see below), Ctrl-C, or `taskkill /im barcode-rest.exe`.
+
+To stop a startup instance with `POST /exit`, set a fixed token on the shortcut
+(`barcode-rest.exe -exit-token <token>`): the random token is only printed to
+the console, which is hidden for double-click / startup launches.
 
 ## Endpoints
 
@@ -71,13 +91,44 @@ Liveness check. Returns HTTP 200 with:
 
 `version` is the release tag embedded at build time (`dev` for local builds).
 
+### POST /exit
+
+Stops the **`barcode-rest` process** gracefully — this does not shut down
+Windows or the PC, it only ends this program. Replies HTTP 200 with:
+
+```json
+{"ok": true}
+```
+
+then stops accepting new connections and drains in-flight requests before the
+process exits. Intended for callers that start `barcode-rest` as a resident
+helper (e.g. `barcodekit`) and want to stop it cleanly when done.
+
+Requires a token:
+
+| Param | Required | Description |
+|---|---|---|
+| `token` | yes | Must equal the server's exit token. Pass a fixed one with `-exit-token <token>` at startup, or use the random token printed on the `exit token:` startup line. A missing or wrong token returns HTTP 403 |
+
+Two guards stop a web page you happen to be viewing from killing the resident
+server: it is `POST` only (a `GET /exit` returns HTTP 405, so a browser visit,
+link preview or stray click does nothing), and a cross-site `fetch`/form POST
+that reaches `127.0.0.1` still cannot guess the token, so it gets HTTP 403.
+Ctrl-C / SIGTERM also trigger the same graceful shutdown.
+
+```powershell
+# with a caller-supplied token
+barcode-rest.exe -exit-token abc123
+curl -X POST "http://127.0.0.1:8787/exit?token=abc123"
+```
+
 ### GET /datamatrix
 
 Returns a DataMatrix PNG.
 
 | Param | Required | Default | Description |
 |---|---|---|---|
-| `text` | yes | — | String to encode (max 128 bytes UTF-8) |
+| `text` | yes | — | String to encode (max 3116 bytes UTF-8) |
 | `module` | no | `10` | Pixels per module (2–32) |
 | `quiet` | no | `4` | Quiet-zone modules around the code (0–16) |
 | `size` | no | — | Output edge length in px (16–2048). Overrides `module`: draws at the largest integer module that fits, centered with white padding. The minimum usable size depends on the encoded data, symbol type, and quiet zone — HTTP 400 is returned if the symbol cannot fit |
@@ -88,7 +139,7 @@ Returns a QR code PNG.
 
 | Param | Required | Default | Description |
 |---|---|---|---|
-| `text` | yes | — | String to encode (max 256 bytes UTF-8) |
+| `text` | yes | — | String to encode (max 7089 bytes UTF-8) |
 | `module` | no | `10` | Pixels per module (2–32) |
 | `quiet` | no | `4` | Quiet-zone modules around the code (0–16) |
 | `level` | no | `M` | Error correction level (L / M / Q / H) |
@@ -97,7 +148,7 @@ Returns a QR code PNG.
 ### GET /aztec
 
 Returns an Aztec code PNG. Same parameters as `/datamatrix`
-(`text` max 256 bytes). Error correction is fixed at 33%.
+(`text` max 3748 bytes). Error correction is fixed at 33%.
 
 ### GET /pdf417
 
@@ -105,7 +156,7 @@ Returns a PDF417 (stacked 2D) PNG.
 
 | Param | Required | Default | Description |
 |---|---|---|---|
-| `text` | yes | — | String to encode (max 256 bytes UTF-8) |
+| `text` | yes | — | String to encode (max 2610 bytes UTF-8) |
 | `module` | no | `3` | Module width in px (2–32). Row height is automatically 2 modules |
 | `quiet` | no | `2` | Quiet-zone modules (0–16) |
 | `level` | no | `2` | Security level (0–8) |
@@ -141,9 +192,14 @@ GET /ean8      7 digits (check digit computed) or 8 digits
 ### Errors
 
 - Invalid parameters: HTTP 400 `{"ok": false, "error": "..."}`
+- Text too long for the symbology: HTTP 400. The 2D `text` byte caps above are each
+  standard's maximum capacity in its densest (numeric) mode; letters, binary data or a
+  higher QR error-correction level hold fewer characters, and text that fits the byte cap
+  but not the actual symbol is still rejected with a 400 (never a 500)
 - Output image over ~16 megapixels (extreme module/height/quiet combinations or a large label): HTTP 400
 - Characters/length/check-digit not valid for the symbology: HTTP 400
-- Non-GET methods: HTTP 405
+- Wrong method for the endpoint (non-GET on a generation endpoint, non-POST on `/exit`): HTTP 405
+- `POST /exit` with a missing or wrong `token`: HTTP 403
 - Unknown paths: HTTP 404
 
 ## Examples
@@ -189,7 +245,13 @@ go build -o barcode-rest.exe
 
 ## License
 
-MIT License
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-Barcode encoding by [github.com/boombuler/barcode](https://github.com/boombuler/barcode) (MIT License).
-Label font from [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (BSD-3-Clause).
+Releases up to and including v0.2.x were distributed under the MIT License;
+v0.3.0 and later are Apache-2.0.
+
+Third-party components (unchanged):
+
+- Barcode encoding: [github.com/boombuler/barcode](https://github.com/boombuler/barcode) (MIT License)
+- Label font: [golang.org/x/image](https://pkg.go.dev/golang.org/x/image) (BSD-3-Clause)
+- Go standard library / runtime (BSD-3-Clause)

@@ -11,9 +11,14 @@ import (
 // -ldflags "-X barcode-rest/internal/server.Version=vX.Y.Z"
 var Version = "dev"
 
-func New() http.Handler {
+// New builds the HTTP handler. shutdown, if non-nil, is invoked by the
+// POST /exit endpoint (after the response is written and only when ?token=
+// matches exitToken) so the caller (barcodekit and similar) can ask the
+// resident server to stop gracefully.
+func New(shutdown func(), exitToken string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handleHealth)
+	mux.HandleFunc("/exit", handleExit(shutdown, exitToken))
 	mux.HandleFunc("/datamatrix", handleDataMatrix)
 	mux.HandleFunc("/qr", handleQR)
 	mux.HandleFunc("/aztec", handleAztec)

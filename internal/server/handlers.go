@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,16 +25,62 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleExit stops the barcode-rest process (not the PC/OS) after replying.
+// Two guards keep a web page the user happens to be viewing from killing the
+// resident server:
+//   - POST only, so a browser visit, link preview or stray GET does nothing.
+//   - a ?token= that must match the server's exit token (constant-time). A
+//     cross-site fetch/form POST can reach 127.0.0.1 but cannot guess the
+//     token, so it gets 403.
+//
+// The reply is flushed before shutdown is triggered so the client always sees
+// {"ok":true}; the trigger must not block here, because a graceful stop waits
+// for this very request to finish.
+func handleExit(shutdown func(), token string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			response.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		got := r.URL.Query().Get("token")
+		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
+			response.WriteError(w, http.StatusForbidden, "invalid or missing token")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		if shutdown != nil {
+			shutdown()
+		}
+	}
+}
+
+// Max text length per 2D symbology, in UTF-8 bytes, set to each standard's
+// maximum data capacity in its densest (numeric) mode — measured against the
+// boombuler encoder. Longer input cannot encode in any mode, so it is rejected
+// up front. Input that fits the byte cap but not the chosen content type or
+// error-correction level fails inside the encoder and is reported as 400 too
+// (see the writePNG calls below), never 500.
+const (
+	maxDataMatrixBytes = 3116 // 144x144 symbol, numeric
+	maxQRBytes         = 7089 // version 40, level L, numeric
+	maxAztecBytes      = 3748 // largest layer at 33% ECC, numeric
+	maxPDF417Bytes     = 2610 // security level 2, numeric
+)
+
 func handleDataMatrix(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 128, 10, 4)
+	opt, ok := parseOptions(w, r, maxDataMatrixBytes, 10, 4)
 	if !ok {
 		return
 	}
-	writePNG(w, r, opt, barcode.GenerateDataMatrixPNG, "failed to encode datamatrix", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateDataMatrixPNG, "text too long to encode as datamatrix", http.StatusBadRequest)
 }
 
 func handleQR(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 256, 10, 4)
+	opt, ok := parseOptions(w, r, maxQRBytes, 10, 4)
 	if !ok {
 		return
 	}
@@ -44,20 +91,20 @@ func handleQR(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "level must be one of L, M, Q, H")
 		return
 	}
-	writePNG(w, r, opt, barcode.GenerateQRPNG, "failed to encode qr", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateQRPNG, "text too long to encode as qr (try a lower error-correction level)", http.StatusBadRequest)
 }
 
 func handleAztec(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 256, 10, 4)
+	opt, ok := parseOptions(w, r, maxAztecBytes, 10, 4)
 	if !ok {
 		return
 	}
-	writePNG(w, r, opt, barcode.GenerateAztecPNG, "failed to encode aztec", http.StatusInternalServerError)
+	writePNG(w, r, opt, barcode.GenerateAztecPNG, "text too long to encode as aztec", http.StatusBadRequest)
 }
 
 // PDF417 is not square, so size is unsupported; level is the security level 0-8.
 func handlePDF417(w http.ResponseWriter, r *http.Request) {
-	opt, ok := parseOptions(w, r, 256, 3, 2)
+	opt, ok := parseOptions(w, r, maxPDF417Bytes, 3, 2)
 	if !ok {
 		return
 	}
