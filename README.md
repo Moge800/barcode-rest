@@ -172,7 +172,7 @@ GET /ean8      7 digits (check digit computed) or 8 digits
   but not the actual symbol is still rejected with a 400 (never a 500)
 - Output image over ~16 megapixels (extreme module/height/quiet combinations or a large label): HTTP 400
 - Characters/length/check-digit not valid for the symbology: HTTP 400
-- Non-GET methods: HTTP 405
+- Wrong method for the endpoint (non-GET on a generation endpoint, non-POST on `/shutdown`): HTTP 405
 - Unknown paths: HTTP 404
 
 ## Examples
