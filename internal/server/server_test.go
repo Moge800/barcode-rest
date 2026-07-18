@@ -91,10 +91,10 @@ func TestBadRequests(t *testing.T) {
 		// fits the byte cap but exceeds the symbol's capacity for this content:
 		// must be a clean 400, not a 500.
 		{"/datamatrix?text=" + strings.Repeat("A", 2000), 400},
-		{"/qr?text=" + strings.Repeat("A", maxQRBytes+1), 400},          // over byte cap
-		{"/qr?text=" + strings.Repeat("A", 2000) + "&level=H", 400},     // exceeds level-H capacity
-		{"/aztec?text=" + strings.Repeat("A", maxAztecBytes+1), 400},    // over byte cap
-		{"/pdf417?text=" + strings.Repeat("A", maxPDF417Bytes+1), 400},  // over byte cap
+		{"/qr?text=" + strings.Repeat("A", maxQRBytes+1), 400},         // over byte cap
+		{"/qr?text=" + strings.Repeat("A", 2000) + "&level=H", 400},    // exceeds level-H capacity
+		{"/aztec?text=" + strings.Repeat("A", maxAztecBytes+1), 400},   // over byte cap
+		{"/pdf417?text=" + strings.Repeat("A", maxPDF417Bytes+1), 400}, // over byte cap
 		{"/datamatrix?text=A&module=1", 400},
 		{"/datamatrix?text=A&module=999", 400},
 		{"/datamatrix?text=A&quiet=-1", 400},
@@ -184,12 +184,12 @@ func TestLabel(t *testing.T) {
 func TestLargeInputEncodes(t *testing.T) {
 	digits := func(n int) string { return strings.Repeat("1", n) }
 	cases := []string{
-		"/datamatrix?text=" + digits(3000),         // < 3116 numeric cap
-		"/datamatrix?text=" + digits(3116),         // exactly the numeric cap
-		"/qr?text=" + digits(3000),                 // default level M
-		"/qr?text=" + digits(7089) + "&level=L",    // QR-L numeric cap
-		"/aztec?text=" + digits(3000),              // < 3748
-		"/pdf417?text=" + digits(2000),             // < 2610 at security level 2
+		"/datamatrix?text=" + digits(3000),      // < 3116 numeric cap
+		"/datamatrix?text=" + digits(3116),      // exactly the numeric cap
+		"/qr?text=" + digits(3000),              // default level M
+		"/qr?text=" + digits(7089) + "&level=L", // QR-L numeric cap
+		"/aztec?text=" + digits(3000),           // < 3748
+		"/pdf417?text=" + digits(2000),          // < 2610 at security level 2
 	}
 	for _, path := range cases {
 		rec := do(t, "GET", path)
