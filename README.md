@@ -75,6 +75,10 @@ When launched by double-click or startup, the console window hides itself
 automatically (it stays visible when run from a shell).
 Stop it with `POST /exit?token=...` (see below), Ctrl-C, or `taskkill /im barcode-rest.exe`.
 
+To stop a startup instance with `POST /exit`, set a fixed token on the shortcut
+(`barcode-rest.exe -exit-token <token>`): the random token is only printed to
+the console, which is hidden for double-click / startup launches.
+
 ## Endpoints
 
 ### GET /health

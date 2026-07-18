@@ -71,6 +71,10 @@ barcode-rest.exe generate code128 --text ABC123 --label --output c128.png
 （シェルから実行した場合は通常どおり表示される）。停止は `POST /exit?token=...`（下記参照）、
 Ctrl-C、または `taskkill /im barcode-rest.exe`。
 
+スタートアップ起動したインスタンスを `POST /exit` で止めたい場合は、ショートカット側に
+固定tokenを指定しておく（`barcode-rest.exe -exit-token <token>`）。未指定時のランダムtokenは
+コンソール出力にのみ表示されるが、ダブルクリック／スタートアップ起動ではコンソールが非表示になるため。
+
 ## エンドポイント
 
 ### GET /health
