@@ -2,6 +2,8 @@
 
 [English version / 英語版はこちら](README.md)
 
+解説記事（Qiita）: [ExcelでDataMatrixを作りたいので、生成処理を外部アプリに任せてみた](https://qiita.com/Moge800/items/535c50ae455b3189ce42)
+
 ローカル専用の帳票向けバーコード画像生成REST API。
 
 Excelの出荷票・現品票などに貼り付けるバーコードのPNG画像を、
